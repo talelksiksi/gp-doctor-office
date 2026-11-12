@@ -21,7 +21,7 @@ fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 function emptyDb() {
   return { patients: [], antecedents: [], visites: [], mesures: [], ordonnances: [], rdv: [], medicaments: [], modeles: [], motifs: [],
-    settings: { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', honoraires: 40, pin: '1234', taillePolice: 1 },
+    settings: { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', pin: '1234', taillePolice: 1 },
     meta: { version: 1, source: 'vide', creeLe: new Date().toISOString() } };
 }
 

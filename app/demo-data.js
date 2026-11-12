@@ -115,7 +115,7 @@ const DemoData = (() => {
           motif = a.motif; interro = a.interro; examen = a.examen; concl = a.concl;
           lignes = a.lignes || MODELES.find(m => m.id === a.modele).lignes;
         }
-        const vis = { id: vId, patientId: i, date: `${iso(date)}T${heure}`, motif, interrogatoire: interro, examen, conclusions: concl, notes: '', honoraires: 40, paye: jour > 3 || rnd() < .7 };
+        const vis = { id: vId, patientId: i, date: `${iso(date)}T${heure}`, motif, interrogatoire: interro, examen, conclusions: concl, notes: '' };
         visites.push(vis);
         const tas = chronique ? 125 + Math.floor(rnd() * 35) : 110 + Math.floor(rnd() * 25);
         mesures.push({ id: mId++, patientId: i, visiteId: vId, date: iso(date), type: 'TA', valeur: `${tas}/${70 + Math.floor(rnd() * 25)}` });
@@ -146,9 +146,9 @@ const DemoData = (() => {
       settings: {
         titre: 'Docteur', prenom: 'Hédi', nom: 'Mansour', specialite: 'Médecine générale',
         adresse: '12 Avenue Habib Bourguiba', ville: '4100 Médenine', tel: '+216 75 640 000',
-        honoraires: 40, pin: '1234', taillePolice: 1,
+        pin: '1234', taillePolice: 1,
       },
-      meta: { version: 1, source: 'demo' },
+      meta: { version: 2, source: 'demo' },
     };
   }
   return { build };

@@ -24,17 +24,17 @@ les vraies données ; sinon elle passe en démonstration.
 ## Fonctions
 
 - Connexion par code à 4 chiffres sur un grand pavé numérique
-- Accueil : rendez-vous du jour, salle d'attente, recette du jour
+- Accueil : rendez-vous du jour, salle d'attente, nombre de dossiers
 - Recherche de patient par nom, prénom ou téléphone (sans accents)
 - Dossier : antécédents par type, alerte allergies, dernières mesures avec évolution,
   historique des consultations avec ordonnances
 - Consultation : motif, interrogatoire, examen, mesures (TA, pouls, poids, température,
   glycémie), conclusion, notes privées, ordonnance avec catalogue de médicaments,
-  modèles, posologies rapides, reprise de l'ordonnance précédente, honoraires
+  modèles, posologies rapides, reprise de l'ordonnance précédente
 - Impression A5 : ordonnance, certificat de repos, d'aptitude, lettre à un confrère
 - Agenda par jour avec heures libres, arrivée des patients
-- Recettes : jour / semaine / mois / année, impayés
-- Réglages : en-tête des ordonnances, honoraires, code, modèles, sauvegarde
+- Réglages : en-tête des ordonnances, code, modèles, sauvegarde
+- Pas de gestion d'argent : petit cabinet, l'application se concentre sur les dossiers
 
 ## Reprise des données MedERP
 

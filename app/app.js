@@ -17,8 +17,6 @@ const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d
 const fmtDate = (iso, opts = { day: 'numeric', month: 'long', year: 'numeric' }) => iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('fr-FR', opts) : '—';
 const fmtLong = iso => fmtDate(iso, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const age = iso => { if (!iso) return ''; const b = new Date(iso + 'T12:00:00'), n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a; };
-const money = n => (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' DT';
-const moneyShort = n => Math.round(Number(n) || 0).toLocaleString('fr-FR') + ' DT';
 const initials = p => ((p.prenom || ' ')[0] + (p.nom || ' ')[0]).toUpperCase();
 const fullName = p => p ? `${p.prenom} ${p.nom}`.trim() : '';
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -34,13 +32,13 @@ const Store = {
     } catch { /* pas de serveur local : mode démo */ }
     this.mode = 'demo';
     try { this.data = JSON.parse(localStorage.getItem('cm_demo')); } catch { this.data = null; }
-    if (!this.data || this.data.meta?.version !== 1) this.data = DemoData.build();
+    if (!this.data || this.data.meta?.version !== 2) this.data = DemoData.build();
     this._fill();
     this._persistDemo();
   },
   _fill() {
     for (const k of ['patients', 'antecedents', 'visites', 'mesures', 'ordonnances', 'rdv', 'medicaments', 'modeles', 'motifs']) this.data[k] = this.data[k] || [];
-    this.data.settings = { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', honoraires: 40, pin: '1234', taillePolice: 1, ...(this.data.settings || {}) };
+    this.data.settings = { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', pin: '1234', taillePolice: 1, ...(this.data.settings || {}) };
   },
   _persistDemo() { try { localStorage.setItem('cm_demo', JSON.stringify(this.data)); } catch { } },
   async save(...collections) {
@@ -168,7 +166,6 @@ const Router = {
       patient: () => a === 'nouveau' ? Views.patientForm(null) : b === 'modifier' ? Views.patientForm(a) : Views.patient(a),
       consultation: () => a === 'nouvelle' ? Views.consultation(null, b) : Views.consultation(a),
       agenda: () => Views.agenda(a || todayISO()),
-      recettes: () => Views.recettes(a || 'jour'),
       reglages: () => Views.settings(),
     };
     main.innerHTML = '';
@@ -185,7 +182,6 @@ const Views = {
     const h = new Date().getHours();
     const rdvs = d.rdv.filter(r => r.date === today).sort((x, y) => x.heure.localeCompare(y.heure));
     const visitsToday = d.visites.filter(v => v.date.startsWith(today));
-    const recette = visitsToday.filter(v => v.paye).reduce((t, v) => t + (+v.honoraires || 0), 0);
     const waiting = rdvs.filter(r => r.present && !visitsToday.some(v => v.patientId && v.patientId == r.patientId)).length;
     $('#main').innerHTML = `
       <div class="hello">
@@ -200,7 +196,7 @@ const Views = {
       <div class="stat-row">
         <div class="stat"><b>${visitsToday.length}</b><span>consultation${visitsToday.length > 1 ? 's' : ''} aujourd'hui</span></div>
         <div class="stat"><b>${waiting}</b><span>patient${waiting > 1 ? 's' : ''} en salle d'attente</span></div>
-        <div class="stat"><b>${moneyShort(recette)}</b><span>encaissés aujourd'hui</span></div>
+        <div class="stat"><b>${d.patients.length.toLocaleString('fr-FR')}</b><span>dossiers patients</span></div>
       </div>
       <div class="card">
         <div class="card-head"><h2><i class="fa-solid fa-clock"></i> Rendez-vous d'aujourd'hui</h2><a class="btn btn-sm" href="#/agenda"><i class="fa-solid fa-plus"></i> Ajouter</a></div>
@@ -391,7 +387,6 @@ const Views = {
       <div class="visit-head">
         <div><span class="visit-date">${fmtLong(v.date)}</span> ${v.date.length > 10 ? `<span class="muted">à ${v.date.slice(11, 16)}</span>` : ''}</div>
         <div class="btn-row">
-          ${v.paye ? `<span class="pill green">${moneyShort(v.honoraires)} payé</span>` : +v.honoraires ? `<span class="pill red">${moneyShort(v.honoraires)} non payé</span>` : ''}
           ${rx && rx.lignes.length ? `<button class="btn btn-sm" data-print-rx="${v.id}"><i class="fa-solid fa-print"></i> Ordonnance</button>` : ''}
           <a class="btn btn-sm" href="#/consultation/${v.id}"><i class="fa-solid fa-pen"></i> Ouvrir</a>
         </div>
@@ -474,7 +469,7 @@ const Views = {
   /* ── Consultation ── */
   consultation(vid, pidNew) {
     const d = Store.data, s = Store.s;
-    const v = vid ? d.visites.find(x => x.id == vid) : { patientId: +pidNew, date: `${todayISO()}T${nowTime()}`, motif: '', interrogatoire: '', examen: '', conclusions: '', notes: '', honoraires: s.honoraires, paye: true };
+    const v = vid ? d.visites.find(x => x.id == vid) : { patientId: +pidNew, date: `${todayISO()}T${nowTime()}`, motif: '', interrogatoire: '', examen: '', conclusions: '', notes: '' };
     if (!v) { $('#main').innerHTML = '<p class="empty">Consultation introuvable.</p>'; return; }
     const p = Store.patient(v.patientId);
     if (!p) { $('#main').innerHTML = '<p class="empty">Patient introuvable.</p>'; return; }
@@ -521,12 +516,6 @@ const Views = {
         <div class="chips" id="rx-chips">${['1 comprimé le matin', '1 comprimé matin et soir', '1 comprimé 3 fois par jour', 'au milieu du repas', 'si douleur', 'pendant 5 jours', 'pendant 7 jours', 'pendant 1 mois', 'pendant 3 mois'].map(c => `<button type="button" class="chip">${c}</button>`).join('')}</div>
         <button class="btn" id="rx-add"><i class="fa-solid fa-plus"></i> Ajouter un médicament</button>
       </div>
-      <div class="card"><h2><i class="fa-solid fa-coins"></i> Honoraires</h2>
-        <div class="form">
-          ${UI.field('c-hono', 'Montant (DT)', v.honoraires, { type: 'number', attrs: 'min="0" step="1" inputmode="decimal"' })}
-          <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" id="c-paye" ${v.paye ? 'checked' : ''}/> Le patient a payé</label></div>
-        </div>
-      </div>
       <div class="sticky-actions">
         ${vid ? '<button class="btn btn-danger btn-big" id="c-del"><i class="fa-solid fa-trash"></i> Supprimer</button>' : ''}
         <a class="btn btn-big" href="#/patient/${p.id}">Annuler</a>
@@ -569,7 +558,6 @@ const Views = {
       const data = {
         date: `${date}T${(v.date.slice(11, 16) || nowTime())}`, motif: $('#c-motif').value.trim(), interrogatoire: $('#c-interro').value.trim(),
         examen: $('#c-examen').value.trim(), conclusions: $('#c-concl').value.trim(), notes: $('#c-notes').value.trim(),
-        honoraires: parseFloat($('#c-hono').value) || 0, paye: $('#c-paye').checked,
       };
       let id = vid;
       if (vid) Object.assign(v, data);
@@ -666,32 +654,6 @@ const Views = {
     }
   },
 
-  /* ── Recettes ── */
-  recettes(period) {
-    const d = Store.data, today = todayISO();
-    const ranges = { jour: [today, today], semaine: [addDays(today, -6), today], mois: [today.slice(0, 8) + '01', today], annee: [today.slice(0, 5) + '01-01', today] };
-    const [from, to] = ranges[period] || ranges.jour;
-    const vs = d.visites.filter(v => v.date.slice(0, 10) >= from && v.date.slice(0, 10) <= to).sort((a, b) => b.date.localeCompare(a.date));
-    const paid = vs.filter(v => v.paye).reduce((t, v) => t + (+v.honoraires || 0), 0);
-    const unpaidAll = d.visites.filter(v => !v.paye && +v.honoraires > 0).sort((a, b) => b.date.localeCompare(a.date));
-    $('#main').innerHTML = `
-      <div class="page-head"><h1>Recettes</h1></div>
-      <div class="seg" style="margin-bottom:1.1rem">${[['jour', 'Aujourd\'hui'], ['semaine', '7 derniers jours'], ['mois', 'Ce mois-ci'], ['annee', 'Cette année']].map(([k, l]) => `<label><input type="radio" name="per" value="${k}" ${k === period ? 'checked' : ''}/> ${l}</label>`).join('')}</div>
-      <div class="stat-row">
-        <div class="stat"><b>${moneyShort(paid)}</b><span>encaissés</span></div>
-        <div class="stat"><b>${vs.length}</b><span>consultation${vs.length > 1 ? 's' : ''}</span></div>
-        <div class="stat"><b>${moneyShort(unpaidAll.reduce((t, v) => t + (+v.honoraires || 0), 0))}</b><span>restant à payer (tous)</span></div>
-      </div>
-      ${unpaidAll.length ? `<div class="card"><h2><i class="fa-solid fa-hourglass-half"></i> Pas encore payé</h2><div class="list">${unpaidAll.slice(0, 20).map(v => { const p = Store.patient(v.patientId); return p ? `<div class="row">${UI.avatar(p)}<div class="grow"><div class="name">${esc(fullName(p))}</div><div class="sub">${fmtDate(v.date)} · ${moneyShort(v.honoraires)}</div></div><button class="btn btn-green btn-sm" data-pay="${v.id}"><i class="fa-solid fa-check"></i> Payé</button></div>` : ''; }).join('')}</div></div>` : ''}
-      <div class="card"><h2><i class="fa-solid fa-list"></i> Détail</h2>
-        ${vs.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Motif</th><th style="text-align:right">Montant</th></tr></thead><tbody>
-        ${vs.map(v => { const p = Store.patient(v.patientId); return `<tr><td>${fmtDate(v.date, { day: 'numeric', month: 'short' })}</td><td><a href="#/patient/${v.patientId}">${esc(fullName(p))}</a></td><td>${esc(v.motif || '')}</td><td class="num">${v.paye ? moneyShort(v.honoraires) : `<span class="pill red">${moneyShort(v.honoraires)} dû</span>`}</td></tr>`; }).join('')}
-        </tbody></table></div>` : '<p class="empty">Aucune consultation sur cette période.</p>'}
-      </div>`;
-    $$('input[name=per]').forEach(r => r.onchange = () => location.hash = `#/recettes/${r.value}`);
-    $$('[data-pay]').forEach(b => b.onclick = async () => { d.visites.find(v => v.id == b.dataset.pay).paye = true; await Store.save('visites'); UI.toast('Paiement noté'); Router.go(); });
-  },
-
   /* ── Réglages ── */
   settings() {
     const s = Store.s;
@@ -705,7 +667,6 @@ const Views = {
         ${UI.field('s-adresse', 'Adresse du cabinet', s.adresse)}
         ${UI.field('s-ville', 'Ville', s.ville)}
         ${UI.field('s-tel', 'Téléphone', s.tel)}
-        ${UI.field('s-hono', 'Honoraires habituels (DT)', s.honoraires, { type: 'number', attrs: 'min="0"' })}
       </div><div class="btn-row" style="margin-top:1rem"><button class="btn btn-primary btn-big" id="s-save"><i class="fa-solid fa-check"></i> Enregistrer</button></div></div>
       <div class="card"><h2><i class="fa-solid fa-key"></i> Code d'accès</h2>
         <p class="muted" style="margin-bottom:.8rem">Le code demandé à l'ouverture (4 chiffres).</p>
@@ -722,7 +683,7 @@ const Views = {
       </div>
       <p class="muted" style="text-align:center">Mon Cabinet · conçu et développé par <a href="https://cictnardc.net" target="_blank" rel="noopener">CICTNA RDC</a></p>`;
     $('#s-save').onclick = async () => {
-      Object.assign(s, { titre: $('#s-titre').value.trim(), specialite: $('#s-spec').value.trim(), prenom: $('#s-prenom').value.trim(), nom: $('#s-nom').value.trim(), adresse: $('#s-adresse').value.trim(), ville: $('#s-ville').value.trim(), tel: $('#s-tel').value.trim(), honoraires: parseFloat($('#s-hono').value) || 0 });
+      Object.assign(s, { titre: $('#s-titre').value.trim(), specialite: $('#s-spec').value.trim(), prenom: $('#s-prenom').value.trim(), nom: $('#s-nom').value.trim(), adresse: $('#s-adresse').value.trim(), ville: $('#s-ville').value.trim(), tel: $('#s-tel').value.trim() });
       if (await Store.save('settings')) UI.toast('Réglages enregistrés');
     };
     $('#s-pin-save').onclick = async () => {

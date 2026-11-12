@@ -94,7 +94,7 @@ Object.values(ta).forEach(x => mesures.push({ id: mid++, patientId: x.patientId,
 const visites = T.visites.map(v => {
   const cas = T.cas.find(c => c.ID === v.CAS_ID);
   return { id: +v.ID, patientId: cas ? +cas.PATIENT_ID : null, date: clean(v.DATE_VISITE).slice(0, 16).replace(' ', 'T'), motif: clean(v.MOTIF),
-    interrogatoire: clean(v.INTEROGATOIRE), examen: clean(v.EXAMEN_CLINIQUE), conclusions: clean(v.CONCLUSIONS), notes: clean(v.NOTES), honoraires: num(v.HONORAIRES), paye: true };
+    interrogatoire: clean(v.INTEROGATOIRE), examen: clean(v.EXAMEN_CLINIQUE), conclusions: clean(v.CONCLUSIONS), notes: clean(v.NOTES) };
 }).filter(v => pids.has(v.patientId));
 const ordonnances = T.ordonnances.map(o => {
   const v = visites.find(x => x.id === +o.VISITE_ID);
@@ -112,7 +112,7 @@ const db = {
   settings: {
     titre: 'Docteur', prenom: 'Ali', nom: 'Ksiksi', specialite: 'Médecine générale',
     adresse: 'P1, KM 491', ville: '4131 Hassi Amor — Médenine', tel: '22 101 213',
-    honoraires: 40, pin: '1234', taillePolice: 1.15,
+    pin: '1234', taillePolice: 1.15,
   },
   meta: { version: 1, source: 'MedERP', importeLe: new Date().toISOString() },
 };
