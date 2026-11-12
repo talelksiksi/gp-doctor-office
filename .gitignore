@@ -1,0 +1,16 @@
+# Données réelles des patients : ne JAMAIS publier
+data/
+*.db
+*.h2.db
+*.sql
+*.sqlite
+*.json.bak
+sauvegardes/
+
+# Outils locaux
+tools/jdk/
+tools/*.jar
+node_modules/
+.vercel/
+Thumbs.db
+.DS_Store
