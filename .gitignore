@@ -9,7 +9,9 @@ sauvegardes/
 
 # Outils locaux
 tools/jdk/
+tools/dl/
 tools/*.jar
+runtime/
 node_modules/
 .vercel/
 Thumbs.db

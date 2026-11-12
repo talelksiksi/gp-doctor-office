@@ -207,7 +207,7 @@ const Views = {
         <div class="list">${rdvs.length ? rdvs.map(r => Views._rdvRow(r)).join('') : '<p class="empty">Aucun rendez-vous aujourd\'hui.</p>'}</div>
       </div>
       <div class="card">
-        <h2><i class="fa-solid fa-clock-rotate-left"></i> Derniers patients vus</h2>
+        <h2><i class="fa-solid fa-clock-rotate-left"></i> ${d.visites.length ? 'Derniers patients vus' : 'Derniers dossiers'}</h2>
         <div class="list">${Views._recentPatients(5)}</div>
       </div>`;
     Views._bindRdvRows();
@@ -221,7 +221,12 @@ const Views = {
       out.push(Views._patientRow(p, `Vu le ${fmtDate(v.date)} · ${esc(v.motif || '')}`));
       if (out.length >= n) break;
     }
-    return out.join('') || '<p class="empty">Aucune consultation pour le moment.</p>';
+    // Pas encore assez de consultations : on complète avec les derniers dossiers créés
+    if (out.length < n) [...Store.data.patients].sort((a, b) => b.id - a.id).forEach(p => {
+      if (out.length >= n || seen.has(p.id)) return;
+      seen.add(p.id); out.push(Views._patientRow(p));
+    });
+    return out.join('') || '<p class="empty">Aucun patient pour le moment.</p>';
   },
 
   _patientRow(p, sub) {
@@ -267,7 +272,7 @@ const Views = {
     const q = $('#q'), res = $('#results');
     const run = () => {
       const t = norm(q.value.trim());
-      if (!t) { res.innerHTML = `<h2 style="font-size:1.15rem;margin:.3rem 0 .4rem" class="muted">Derniers patients vus</h2>${Views._recentPatients(12)}`; return; }
+      if (!t) { res.innerHTML = `<h2 style="font-size:1.15rem;margin:.3rem 0 .4rem" class="muted">${Store.data.visites.length ? 'Derniers patients vus' : 'Derniers dossiers'}</h2>${Views._recentPatients(12)}`; return; }
       const words = t.split(/\s+/);
       const list = Store.data.patients.filter(p => {
         const hay = norm(`${p.nom} ${p.prenom} ${p.tel} ${p.tel2}`).replace(/\s+/g, ' ');
@@ -539,7 +544,7 @@ const Views = {
         <input class="rx-dose" data-i="${i}" value="${esc(l.posologie)}" placeholder="Posologie"/>
         <button class="icon-del" data-rm="${i}" title="Retirer"><i class="fa-solid fa-xmark"></i></button>
       </div>`).join('');
-      $$('.rx-med', box).forEach(inp => { inp.oninput = () => { lignes[inp.dataset.i].medicament = inp.value; Autocomplete.show(inp, d.medicaments, m => { lignes[inp.dataset.i].medicament = m.nom; inp.value = m.nom; box.querySelector(`.rx-dose[data-i="${inp.dataset.i}"]`).focus(); }); }; inp.onblur = () => setTimeout(() => Autocomplete.hide(), 180); inp.onkeydown = e => Autocomplete.key(e); });
+      $$('.rx-med', box).forEach(inp => { inp.oninput = () => { lignes[inp.dataset.i].medicament = inp.value; Autocomplete.show(inp, d.medicaments, m => { const txt = m.forme && !norm(m.nom).includes(norm(m.forme)) ? `${m.nom} — ${m.forme.toLowerCase()}` : m.nom; lignes[inp.dataset.i].medicament = txt; inp.value = txt; box.querySelector(`.rx-dose[data-i="${inp.dataset.i}"]`).focus(); }); }; inp.onblur = () => setTimeout(() => Autocomplete.hide(), 180); inp.onkeydown = e => Autocomplete.key(e); });
       $$('.rx-dose', box).forEach(inp => { inp.oninput = () => { lignes[inp.dataset.i].posologie = inp.value; }; inp.onfocus = () => { focusedDose = inp; }; });
       $$('[data-rm]', box).forEach(b => b.onclick = () => { lignes.splice(+b.dataset.rm, 1); draw(); });
     };
@@ -759,7 +764,14 @@ const Autocomplete = {
     this.hide();
     const t = norm(input.value.trim()); if (t.length < 2) return;
     const words = t.split(/\s+/);
-    this.items = source.filter(x => words.every(w => norm(label(x)).includes(w))).slice(0, 8);
+    // Cherche dans le nom et la ligne d'aide (DCI, forme…) ; les noms qui commencent par la saisie d'abord
+    const scored = [];
+    for (const x of source) {
+      const l = norm(label(x)), hay = l + ' ' + norm(sub(x));
+      if (!words.every(w => hay.includes(w))) continue;
+      scored.push([l.startsWith(t) ? 0 : l.includes(t) ? 1 : 2, l.length, x]);
+    }
+    this.items = scored.sort((a, b) => a[0] - b[0] || a[1] - b[1]).slice(0, 10).map(s => s[2]);
     if (!this.items.length) return;
     this.pickFn = onPick; this.idx = -1;
     this.el = document.createElement('div'); this.el.className = 'ac-list';
@@ -823,9 +835,9 @@ const Docs = {
 
 /* ══════════════ Démarrage ══════════════ */
 (async () => {
-  let scale = 1; try { scale = parseFloat(localStorage.getItem('cm_scale')) || 1; } catch { }
-  UI.setScale(scale);
   await Store.load();
+  let scale = 0; try { scale = parseFloat(localStorage.getItem('cm_scale')) || 0; } catch { }
+  UI.setScale(scale || Store.s.taillePolice || 1);
   document.title = Store.mode === 'demo' ? 'Mon Cabinet — démonstration' : 'Mon Cabinet';
   $('#text-plus').onclick = () => UI.setScale(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) + 0.1);
   $('#text-minus').onclick = () => UI.setScale(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--scale')) - 0.1);
