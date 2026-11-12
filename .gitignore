@@ -12,6 +12,7 @@ tools/jdk/
 tools/dl/
 tools/*.jar
 runtime/
+livraison/
 node_modules/
 .vercel/
 Thumbs.db

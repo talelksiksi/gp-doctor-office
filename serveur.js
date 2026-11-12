@@ -101,7 +101,8 @@ server.on('error', e => {
 
 function openBrowser() {
   const url = `http://127.0.0.1:${PORT}/`;
-  if (process.platform === 'win32') exec(`start "" "${url}"`);
+  // Windows : fenêtre Edge « application » (sans barre d'adresse ni onglets), sinon le navigateur par défaut
+  if (process.platform === 'win32') exec(`start "" msedge --app="${url}" --start-maximized`, err => { if (err) exec(`start "" "${url}"`); });
   else if (process.platform === 'darwin') exec(`open "${url}"`);
   else exec(`xdg-open "${url}"`);
 }
