@@ -147,8 +147,12 @@ const DemoData = (() => {
         titre: 'Docteur', prenom: 'Hédi', nom: 'Mansour', specialite: 'Médecine générale',
         adresse: '12 Avenue Habib Bourguiba', ville: '4100 Médenine', tel: '+216 75 640 000',
         pin: '1234', taillePolice: 1,
+        nomAr: 'هادي منصور', titreAr: 'الحكيم', specialiteAr: 'طب عام', ordre: '0000',
+        diplomesFr: 'Diplômé de la Faculté de Médecine de Tunis\nDoctorat en Médecine (1990)', diplomesAr: 'متخرج من كلية الطب بتونس\nدكتوراه في الطب (1990)',
+        cnam: '1/00000/00', mf: '0000000X', telFixe: '75 000 000', telMobile: '20 000 000', email: 'cabinet@exemple.tn',
+        lieuFr: 'Médenine', adresseFooterFr: 'Avenue Habib Bourguiba, Médenine', adresseFooterAr: 'شارع الحبيب بورقيبة، مدنين', lieuAr: 'مدنين', enteteImprime: true,
       },
-      meta: { version: 2, source: 'demo' },
+      meta: { version: 3, source: 'demo' },
     };
   }
   return { build };

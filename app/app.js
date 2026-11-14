@@ -32,13 +32,15 @@ const Store = {
     } catch { /* pas de serveur local : mode démo */ }
     this.mode = 'demo';
     try { this.data = JSON.parse(localStorage.getItem('cm_demo')); } catch { this.data = null; }
-    if (!this.data || this.data.meta?.version !== 2) this.data = DemoData.build();
+    if (!this.data || this.data.meta?.version !== 3) this.data = DemoData.build();
     this._fill();
     this._persistDemo();
   },
   _fill() {
-    for (const k of ['patients', 'antecedents', 'visites', 'mesures', 'ordonnances', 'rdv', 'medicaments', 'modeles', 'motifs']) this.data[k] = this.data[k] || [];
-    this.data.settings = { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', pin: '1234', taillePolice: 1, ...(this.data.settings || {}) };
+    for (const k of ['patients', 'antecedents', 'visites', 'mesures', 'ordonnances', 'rdv', 'medicaments', 'modeles', 'motifs', 'documents']) this.data[k] = this.data[k] || [];
+    this.data.settings = { titre: 'Docteur', prenom: '', nom: '', specialite: 'Médecine générale', adresse: '', ville: '', tel: '', pin: '1234', taillePolice: 1,
+      nomAr: '', titreAr: 'الحكيم', specialiteAr: 'طب عام', diplomesFr: '', diplomesAr: '', ordre: '', cnam: '', mf: '', telFixe: '', telMobile: '', email: '',
+      adresseFooterFr: '', adresseFooterAr: '', lieuFr: '', lieuAr: '', enteteImprime: true, ...(this.data.settings || {}) };
   },
   _persistDemo() { try { localStorage.setItem('cm_demo', JSON.stringify(this.data)); } catch { } },
   async save(...collections) {
@@ -157,7 +159,8 @@ const Router = {
   go() {
     const parts = (location.hash.replace(/^#\/?/, '') || 'accueil').split('/');
     const [page, a, b] = parts;
-    $$('.nav a').forEach(n => n.classList.toggle('active', n.dataset.nav === (page === 'patient' || page === 'consultation' ? 'patients' : page)));
+    const navKey = ['patient', 'consultation', 'document'].includes(page) ? 'patients' : page;
+    $$('.nav a').forEach(n => n.classList.toggle('active', n.dataset.nav === navKey));
     const main = $('#main');
     window.scrollTo(0, 0);
     const views = {
@@ -165,6 +168,7 @@ const Router = {
       patients: () => Views.patients(),
       patient: () => a === 'nouveau' ? Views.patientForm(null) : b === 'modifier' ? Views.patientForm(a) : Views.patient(a),
       consultation: () => a === 'nouvelle' ? Views.consultation(null, b) : Views.consultation(a),
+      document: () => Views.document(a, b),
       agenda: () => Views.agenda(a || todayISO()),
       reglages: () => Views.settings(),
     };
@@ -313,7 +317,7 @@ const Views = {
         <div class="btn-row" style="margin-top:1rem">
           <a class="btn" href="#/patient/${p.id}/modifier"><i class="fa-solid fa-pen"></i> Modifier la fiche</a>
           <button class="btn" id="btn-rdv"><i class="fa-solid fa-calendar-plus"></i> Donner un rendez-vous</button>
-          <button class="btn" id="btn-cert"><i class="fa-solid fa-file-signature"></i> Certificat</button>
+          <button class="btn" id="btn-cert"><i class="fa-solid fa-file-signature"></i> Documents et certificats</button>
           ${visits[0] && Store.rxOf(visits[0].id) ? `<button class="btn" id="btn-renew"><i class="fa-solid fa-rotate"></i> Renouveler la dernière ordonnance</button>` : ''}
         </div>
         ${nextRdv ? `<p style="margin-top:.9rem" class="muted"><i class="fa-solid fa-calendar-check"></i> Prochain rendez-vous : <b>${fmtLong(nextRdv.date)} à ${esc(nextRdv.heure)}</b></p>` : ''}
@@ -338,17 +342,19 @@ const Views = {
         <h2><i class="fa-solid fa-clock-rotate-left"></i> Consultations (${visits.length})</h2>
         ${visits.length ? visits.map(v => Views._visitCard(v)).join('') : '<p class="muted">Aucune consultation. Cliquez sur « Nouvelle consultation » pour commencer.</p>'}
       </div>
+      ${Views._docsList(p)}
       <div class="card">
         <h2><i class="fa-solid fa-address-card"></i> Coordonnées</h2>
         <div class="grid-2">
           <div><p><b>Adresse :</b> ${esc(p.adresse || '—')}</p><p><b>Téléphone 2 :</b> ${esc(p.tel2 || '—')}</p><p><b>Profession :</b> ${esc(p.profession || '—')}</p></div>
-          <div><p><b>État civil :</b> ${esc(p.etatCivil || '—')}</p><p><b>N° assuré :</b> ${esc(p.nss || '—')}</p><p><b>Dossier créé le :</b> ${fmtDate(p.creeLe)}</p></div>
+          <div><p><b>État civil :</b> ${esc(p.etatCivil || '—')}</p><p><b>N° assuré :</b> ${esc(p.nss || '—')}</p><p><b>CIN :</b> ${esc(p.cin || '—')}</p><p><b>Né(e) à :</b> ${esc(p.lieuNaissance || '—')}</p><p><b>Dossier créé le :</b> ${fmtDate(p.creeLe)}</p></div>
         </div>
         <div class="btn-row" style="margin-top:1rem"><button class="btn btn-danger" id="btn-del-patient"><i class="fa-solid fa-trash"></i> Supprimer ce dossier</button></div>
       </div>`;
 
     $('#btn-rdv').onclick = () => Views.rdvDialog({ patientId: p.id });
-    $('#btn-cert').onclick = () => Docs.certificateDialog(p);
+    $('#btn-cert').onclick = () => Docs.chooser(p);
+    $$('[data-reprint]').forEach(b => b.onclick = () => Docs.reprint(b.dataset.reprint));
     $('#btn-ante').onclick = () => Views.anteDialog(p.id);
     if ($('#btn-renew')) $('#btn-renew').onclick = () => { Views._renewFrom = Store.rxOf(visits[0].id); location.hash = `#/consultation/nouvelle/${p.id}`; };
     $$('[data-del-ante]').forEach(b => b.onclick = () => UI.confirm('Supprimer l\'antécédent ?', 'Cet antécédent sera retiré du dossier.', 'Oui, supprimer', async () => {
@@ -366,6 +372,15 @@ const Views = {
       await Store.save('patients', 'visites', 'ordonnances', 'mesures', 'antecedents', 'rdv');
       UI.toast('Dossier supprimé'); location.hash = '#/patients';
     });
+  },
+
+  _docsList(p) {
+    const docs = Store.data.documents.filter(x => x.patientId == p.id).sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
+    if (!docs.length) return '';
+    return `<div class="card"><h2><i class="fa-solid fa-file-signature"></i> Documents remis (${docs.length})</h2><div class="list">${docs.slice(0, 12).map(x => `
+      <div class="row" style="cursor:default"><i class="fa-solid ${Docs.TYPES[x.type]?.icon || 'fa-file'} muted" style="font-size:1.3rem;width:2rem;text-align:center"></i>
+        <div class="grow"><div class="name">${esc(Docs.TYPES[x.type]?.titre || x.type)}</div><div class="sub">${fmtDate(x.date)}</div></div>
+        <button class="btn btn-sm" data-reprint="${x.id}"><i class="fa-solid fa-print"></i> Réimprimer</button></div>`).join('')}</div></div>`;
   },
 
   _measures(pid) {
@@ -393,7 +408,7 @@ const Views = {
       </div>
       ${v.motif ? `<p><b>Motif :</b> ${esc(v.motif)}</p>` : ''}
       ${v.conclusions ? `<p><b>Conclusion :</b> ${esc(v.conclusions)}</p>` : ''}
-      ${rx && rx.lignes.length ? `<ul class="visit-meds">${rx.lignes.map(l => `<li><b>${esc(l.medicament)}</b> — ${esc(l.posologie)}</li>`).join('')}</ul>` : ''}
+      ${rx && rx.lignes.length ? `<div class="visit-meds">${esc(Docs.rxText(rx)).replace(/\n/g, '<br>')}</div>` : ''}
     </div>`;
   },
 
@@ -419,7 +434,7 @@ const Views = {
 
   /* ── Fiche patient (création / modification) ── */
   patientForm(id) {
-    const p = id ? Store.patient(id) : { nom: '', prenom: '', sexe: '', naissance: '', tel: '', tel2: '', adresse: '', assurance: 'CNAM', nss: '', profession: '', etatCivil: '', remarques: '' };
+    const p = id ? Store.patient(id) : { nom: '', prenom: '', sexe: '', naissance: '', tel: '', tel2: '', adresse: '', assurance: 'CNAM', nss: '', cin: '', lieuNaissance: '', profession: '', etatCivil: '', remarques: '' };
     if (!p) { $('#main').innerHTML = '<p class="empty">Ce dossier n\'existe pas.</p>'; return; }
     const pending = !id && Views._pendingRdv ? Store.data.rdv.find(r => r.id === Views._pendingRdv) : null;
     if (pending) { const parts = pending.nom.replace(/^(M\.|Mme|Mlle)\s+/i, '').replace(/\s*\(.*\)$/, '').split(' '); p.prenom = parts.shift() || ''; p.nom = parts.join(' '); if (/^Mme|^Mlle/i.test(pending.nom)) p.sexe = 'F'; }
@@ -437,6 +452,8 @@ const Views = {
         ${UI.field('f-tel2', 'Autre téléphone', p.tel2, { type: 'tel' })}
         ${UI.field('f-adresse', 'Adresse', p.adresse, { full: true })}
         <div class="field"><label for="f-assurance">Couverture</label><select id="f-assurance">${['CNAM', 'Assurance privée', 'Sans', ''].map(o => `<option value="${o}" ${p.assurance === o ? 'selected' : ''}>${o || '— Non renseigné —'}</option>`).join('')}${p.assurance && !['CNAM', 'Assurance privée', 'Sans', ''].includes(p.assurance) ? `<option selected>${esc(p.assurance)}</option>` : ''}</select></div>
+        ${UI.field('f-cin', 'N° carte d\'identité (CIN)', p.cin, { attrs: 'inputmode="numeric" maxlength="8"' })}
+        ${UI.field('f-lieu', 'Lieu de naissance', p.lieuNaissance)}
         ${UI.field('f-nss', 'N° d\'assuré', p.nss)}
         ${UI.field('f-profession', 'Profession', p.profession)}
         <div class="field"><label for="f-etat">État civil</label><select id="f-etat">${['', 'Célibataire', 'Marié(e)', 'Divorcé(e)', 'Veuf(ve)'].map(o => `<option value="${o}" ${p.etatCivil === o ? 'selected' : ''}>${o || '— Non renseigné —'}</option>`).join('')}</select></div>
@@ -451,7 +468,7 @@ const Views = {
       const v = {
         nom: $('#f-nom').value.trim(), prenom: $('#f-prenom').value.trim(), sexe: $('input[name=sexe]:checked')?.value || '',
         naissance: $('#f-naissance').value, tel: $('#f-tel').value.trim(), tel2: $('#f-tel2').value.trim(), adresse: $('#f-adresse').value.trim(),
-        assurance: $('#f-assurance').value, nss: $('#f-nss').value.trim(), profession: $('#f-profession').value.trim(), etatCivil: $('#f-etat').value, remarques: $('#f-remarques').value.trim(),
+        assurance: $('#f-assurance').value, nss: $('#f-nss').value.trim(), cin: $('#f-cin').value.trim(), lieuNaissance: $('#f-lieu').value.trim(), profession: $('#f-profession').value.trim(), etatCivil: $('#f-etat').value, remarques: $('#f-remarques').value.trim(),
       };
       const missing = [!v.nom && 'le nom', !v.prenom && 'le prénom', !v.sexe && 'le sexe', !v.naissance && 'la date de naissance'].filter(Boolean);
       if (missing.length) { UI.alert('Il manque une information', `Merci d'indiquer ${missing.join(', ')}.`); return; }
@@ -474,8 +491,8 @@ const Views = {
     const p = Store.patient(v.patientId);
     if (!p) { $('#main').innerHTML = '<p class="empty">Patient introuvable.</p>'; return; }
     const rx = vid ? Store.rxOf(vid) : null;
-    let lignes = rx ? rx.lignes.map(l => ({ ...l })) : [];
-    if (!vid && Views._renewFrom) { lignes = Views._renewFrom.lignes.map(l => ({ ...l })); Views._renewFrom = null; if (!v.motif) v.motif = 'Renouvellement ordonnance'; }
+    let rxInit = rx ? Docs.rxText(rx) : '';
+    if (!vid && Views._renewFrom) { rxInit = Docs.rxText(Views._renewFrom); Views._renewFrom = null; if (!v.motif) v.motif = 'Renouvellement ordonnance'; }
     const ms = vid ? d.mesures.filter(m => m.visiteId == vid) : [];
     const mv = t => ms.find(m => m.type === t)?.valeur || '';
     const allergies = d.antecedents.filter(a => a.patientId == p.id && a.type === 'Allergies');
@@ -507,14 +524,10 @@ const Views = {
       <div class="card">
         <div class="card-head"><h2><i class="fa-solid fa-prescription"></i> Ordonnance</h2>
           <div class="btn-row">
-            <select id="rx-model" class="btn btn-sm" style="max-width:20rem"><option value="">Charger un modèle…</option>${d.modeles.map(m => `<option value="${m.id}">${esc(m.libelle)}</option>`).join('')}</select>
             ${prevVisit && Store.rxOf(prevVisit.id) ? '<button class="btn btn-sm" id="rx-prev"><i class="fa-solid fa-rotate"></i> Reprendre la précédente</button>' : ''}
           </div>
         </div>
-        <div id="rx-lines"></div>
-        <p class="muted" style="font-size:.95rem">Posologies rapides : cliquez pour compléter la ligne en cours</p>
-        <div class="chips" id="rx-chips">${['1 comprimé le matin', '1 comprimé matin et soir', '1 comprimé 3 fois par jour', 'au milieu du repas', 'si douleur', 'pendant 5 jours', 'pendant 7 jours', 'pendant 1 mois', 'pendant 3 mois'].map(c => `<button type="button" class="chip">${c}</button>`).join('')}</div>
-        <button class="btn" id="rx-add"><i class="fa-solid fa-plus"></i> Ajouter un médicament</button>
+        <div id="rx-editor"></div>
       </div>
       <div class="sticky-actions">
         ${vid ? '<button class="btn btn-danger btn-big" id="c-del"><i class="fa-solid fa-trash"></i> Supprimer</button>' : ''}
@@ -523,35 +536,9 @@ const Views = {
         <button class="btn btn-primary btn-big" id="c-save-print"><i class="fa-solid fa-print"></i> Enregistrer et imprimer</button>
       </div>`;
 
-    // Lignes d'ordonnance
-    let focusedDose = null;
-    const box = $('#rx-lines');
-    const draw = () => {
-      if (!lignes.length) lignes.push({ medicament: '', posologie: '' });
-      box.innerHTML = lignes.map((l, i) => `<div class="rx-line">
-        <div class="ac"><input class="rx-med" data-i="${i}" value="${esc(l.medicament)}" placeholder="Médicament" autocomplete="off"/></div>
-        <input class="rx-dose" data-i="${i}" value="${esc(l.posologie)}" placeholder="Posologie"/>
-        <button class="icon-del" data-rm="${i}" title="Retirer"><i class="fa-solid fa-xmark"></i></button>
-      </div>`).join('');
-      $$('.rx-med', box).forEach(inp => { inp.oninput = () => { lignes[inp.dataset.i].medicament = inp.value; Autocomplete.show(inp, d.medicaments, m => { const txt = m.forme && !norm(m.nom).includes(norm(m.forme)) ? `${m.nom} — ${m.forme.toLowerCase()}` : m.nom; lignes[inp.dataset.i].medicament = txt; inp.value = txt; box.querySelector(`.rx-dose[data-i="${inp.dataset.i}"]`).focus(); }); }; inp.onblur = () => setTimeout(() => Autocomplete.hide(), 180); inp.onkeydown = e => Autocomplete.key(e); });
-      $$('.rx-dose', box).forEach(inp => { inp.oninput = () => { lignes[inp.dataset.i].posologie = inp.value; }; inp.onfocus = () => { focusedDose = inp; }; });
-      $$('[data-rm]', box).forEach(b => b.onclick = () => { lignes.splice(+b.dataset.rm, 1); draw(); });
-    };
-    draw();
-    $$('#rx-chips .chip').forEach(c => c.onmousedown = e => e.preventDefault());
-    $$('#rx-chips .chip').forEach(c => c.onclick = () => {
-      const inp = focusedDose || $$('.rx-dose', box).pop();
-      const i = inp.dataset.i;
-      lignes[i].posologie = (lignes[i].posologie ? lignes[i].posologie.replace(/\s+$/, '') + (c.textContent.startsWith('pendant') || c.textContent.startsWith('au ') || c.textContent.startsWith('si ') ? ' ' : ', ') : '') + c.textContent;
-      inp.value = lignes[i].posologie; inp.focus();
-    });
-    $('#rx-add').onclick = () => { lignes.push({ medicament: '', posologie: '' }); draw(); $$('.rx-med', box).pop().focus(); };
-    $('#rx-model').onchange = e => {
-      const m = d.modeles.find(x => x.id == e.target.value); if (!m) return;
-      lignes = lignes.filter(l => l.medicament.trim()).concat(m.lignes.map(([medicament, posologie]) => ({ medicament, posologie })));
-      e.target.value = ''; draw(); UI.toast(`Modèle « ${m.libelle} » ajouté`);
-    };
-    if ($('#rx-prev')) $('#rx-prev').onclick = () => { lignes = lignes.filter(l => l.medicament.trim()).concat(Store.rxOf(prevVisit.id).lignes.map(l => ({ ...l }))); draw(); UI.toast('Ordonnance précédente reprise'); };
+    // Ordonnance : texte libre, une ligne écrite = une ligne imprimée
+    const rxEd = Docs.rxEditor($('#rx-editor'), rxInit);
+    if ($('#rx-prev')) $('#rx-prev').onclick = () => { rxEd.append(Docs.rxText(Store.rxOf(prevVisit.id))); UI.toast('Ordonnance précédente reprise'); };
 
     const save = async print => {
       const date = $('#c-date').value || todayISO();
@@ -569,12 +556,11 @@ const Views = {
         d.mesures.push({ id: Store.nextId('mesures'), patientId: p.id, visiteId: id, date, type, valeur: type === 'TA' ? $(sel).value.trim() : val });
       });
       // Ordonnance
-      const clean = lignes.filter(l => l.medicament.trim()).map(l => ({ medicament: l.medicament.trim(), posologie: l.posologie.trim() }));
+      const rxNew = Docs.rxFromText(rxEd.get());
+      const clean = rxNew.lignes;
       const existing = d.ordonnances.find(o => o.visiteId == id);
-      if (clean.length) { if (existing) Object.assign(existing, { lignes: clean, date }); else d.ordonnances.push({ id: Store.nextId('ordonnances'), visiteId: id, patientId: p.id, date, lignes: clean }); }
+      if (clean.length) { if (existing) Object.assign(existing, rxNew, { date }); else d.ordonnances.push({ id: Store.nextId('ordonnances'), visiteId: id, patientId: p.id, date, ...rxNew }); }
       else if (existing) d.ordonnances = d.ordonnances.filter(o => o !== existing);
-      // Médicaments inconnus : ajoutés au catalogue pour la prochaine fois
-      clean.forEach(l => { if (!d.medicaments.some(m => norm(m.nom) === norm(l.medicament))) d.medicaments.push({ id: Store.nextId('medicaments'), nom: l.medicament, classe: '', forme: '' }); });
       if (data.motif && !d.motifs.some(m => norm(m) === norm(data.motif))) d.motifs.push(data.motif);
       if (!(await Store.save('visites', 'mesures', 'ordonnances', 'medicaments', 'motifs'))) return;
       UI.toast('Consultation enregistrée');
@@ -659,7 +645,7 @@ const Views = {
     const s = Store.s;
     $('#main').innerHTML = `
       <div class="page-head"><h1>Réglages</h1></div>
-      <div class="card"><h2><i class="fa-solid fa-user-doctor"></i> Le médecin <small class="muted" style="font-weight:400;font-size:.9rem">(en-tête des ordonnances)</small></h2><div class="form">
+      <div class="card"><h2><i class="fa-solid fa-user-doctor"></i> Le médecin <small class="muted" style="font-weight:400;font-size:.9rem">(en-tête des documents)</small></h2><div class="form">
         ${UI.field('s-titre', 'Titre', s.titre)}
         ${UI.field('s-spec', 'Spécialité', s.specialite)}
         ${UI.field('s-prenom', 'Prénom', s.prenom)}
@@ -667,6 +653,25 @@ const Views = {
         ${UI.field('s-adresse', 'Adresse du cabinet', s.adresse)}
         ${UI.field('s-ville', 'Ville', s.ville)}
         ${UI.field('s-tel', 'Téléphone', s.tel)}
+      </div>
+      <h3 style="margin:1.4rem 0 .8rem">En-tête et pied des documents imprimés</h3>
+      <div class="form">
+        ${UI.field('s-nomar', 'Nom en arabe', s.nomAr, { attrs: 'dir="rtl"' })}
+        ${UI.field('s-titrear', 'Titre en arabe', s.titreAr, { attrs: 'dir="rtl"' })}
+        ${UI.field('s-specar', 'Spécialité en arabe', s.specialiteAr, { attrs: 'dir="rtl"' })}
+        ${UI.field('s-ordre', 'N° Ordre des médecins', s.ordre)}
+        ${UI.field('s-dipfr', 'Diplômes (français)', s.diplomesFr, { type: 'textarea', full: true, hint: '(une ligne par diplôme)' })}
+        ${UI.field('s-dipar', 'Diplômes (arabe)', s.diplomesAr, { type: 'textarea', full: true, attrs: 'dir="rtl"' })}
+        ${UI.field('s-cnam', 'Code CNAM', s.cnam)}
+        ${UI.field('s-mf', 'Matricule fiscal (MF)', s.mf)}
+        ${UI.field('s-fixe', 'Téléphone fixe', s.telFixe)}
+        ${UI.field('s-gsm', 'GSM', s.telMobile)}
+        ${UI.field('s-email', 'E-mail', s.email)}
+        ${UI.field('s-lieufr', 'Lieu (« Fait à … »)', s.lieuFr)}
+        ${UI.field('s-adrfr', 'Adresse du pied de page (français)', s.adresseFooterFr)}
+        ${UI.field('s-adrar', 'Adresse du pied de page (arabe)', s.adresseFooterAr, { attrs: 'dir="rtl"' })}
+        ${UI.field('s-lieuar', 'Lieu en arabe (signature)', s.lieuAr, { attrs: 'dir="rtl"' })}
+        <div class="field full"><label class="check"><input type="checkbox" id="s-entete" ${s.enteteImprime !== false ? 'checked' : ''}/> Imprimer l'en-tête et le pied de page (décocher si le papier est déjà imprimé)</label></div>
       </div><div class="btn-row" style="margin-top:1rem"><button class="btn btn-primary btn-big" id="s-save"><i class="fa-solid fa-check"></i> Enregistrer</button></div></div>
       <div class="card"><h2><i class="fa-solid fa-key"></i> Code d'accès</h2>
         <p class="muted" style="margin-bottom:.8rem">Le code demandé à l'ouverture (4 chiffres).</p>
@@ -683,7 +688,11 @@ const Views = {
       </div>
       <p class="muted" style="text-align:center">Mon Cabinet · conçu et développé par <a href="https://cictnardc.net" target="_blank" rel="noopener">CICTNA RDC</a></p>`;
     $('#s-save').onclick = async () => {
-      Object.assign(s, { titre: $('#s-titre').value.trim(), specialite: $('#s-spec').value.trim(), prenom: $('#s-prenom').value.trim(), nom: $('#s-nom').value.trim(), adresse: $('#s-adresse').value.trim(), ville: $('#s-ville').value.trim(), tel: $('#s-tel').value.trim() });
+      Object.assign(s, { titre: $('#s-titre').value.trim(), specialite: $('#s-spec').value.trim(), prenom: $('#s-prenom').value.trim(), nom: $('#s-nom').value.trim(), adresse: $('#s-adresse').value.trim(), ville: $('#s-ville').value.trim(), tel: $('#s-tel').value.trim(),
+        nomAr: $('#s-nomar').value.trim(), titreAr: $('#s-titrear').value.trim(), specialiteAr: $('#s-specar').value.trim(), ordre: $('#s-ordre').value.trim(),
+        diplomesFr: $('#s-dipfr').value.trim(), diplomesAr: $('#s-dipar').value.trim(), cnam: $('#s-cnam').value.trim(), mf: $('#s-mf').value.trim(),
+        telFixe: $('#s-fixe').value.trim(), telMobile: $('#s-gsm').value.trim(), email: $('#s-email').value.trim(), lieuFr: $('#s-lieufr').value.trim(),
+        adresseFooterFr: $('#s-adrfr').value.trim(), adresseFooterAr: $('#s-adrar').value.trim(), lieuAr: $('#s-lieuar').value.trim(), enteteImprime: $('#s-entete').checked });
       if (await Store.save('settings')) UI.toast('Réglages enregistrés');
     };
     $('#s-pin-save').onclick = async () => {
@@ -747,51 +756,6 @@ const Autocomplete = {
     else if (e.key === 'Escape') this.hide();
   },
   hide() { if (this.el) this.el.remove(); this.el = null; },
-};
-
-/* ══════════════ Documents imprimés ══════════════ */
-const Docs = {
-  head() {
-    const s = Store.s;
-    return `<div class="doc-head"><div><h1>${esc(s.titre === 'Docteur' ? 'Dr' : s.titre)} ${esc(s.prenom)} ${esc(s.nom)}</h1><p>${esc(s.specialite)}</p></div>
-      <div style="text-align:right"><p>${esc(s.adresse)}<br>${esc(s.ville)}<br>${esc(s.tel)}</p></div></div>`;
-  },
-  print(html) {
-    $('#print-area').innerHTML = html;
-    setTimeout(() => window.print(), 100);
-  },
-  printPrescription(v) {
-    const p = Store.patient(v.patientId), rx = Store.rxOf(v.id);
-    if (!rx) return;
-    this.print(`${this.head()}
-      <div class="doc-meta"><span><b>${esc(p.nom.toUpperCase())} ${esc(p.prenom)}</b> · ${age(p.naissance)} ans</span><span>${esc(Store.s.ville.replace(/^\d+\s*/, ''))}, le ${fmtDate(v.date)}</span></div>
-      <div class="doc-title">ORDONNANCE</div>
-      <ol class="doc-rx">${rx.lignes.map(l => `<li><b>${esc(l.medicament)}</b><span>${esc(l.posologie)}</span></li>`).join('')}</ol>
-      <div class="doc-sign">Signature et cachet</div>`);
-  },
-  certificateDialog(p) {
-    const s = Store.s, dr = `${s.titre === 'Docteur' ? 'Dr' : s.titre} ${s.prenom} ${s.nom}`.trim();
-    const civ = p.sexe === 'F' ? 'Mme' : 'M.';
-    const né = p.sexe === 'F' ? 'née' : 'né';
-    const tpl = {
-      repos: `Je soussigné, ${dr}, certifie avoir examiné ce jour ${civ} ${p.prenom} ${p.nom.toUpperCase()}, ${né} le ${fmtDate(p.naissance)}, et que son état de santé nécessite un repos de [3] jours, du ${fmtDate(todayISO())} au ${fmtDate(addDays(todayISO(), 2))} inclus, sauf complications.\n\nCertificat remis en main propre à l'intéressé(e) pour servir et valoir ce que de droit.`,
-      aptitude: `Je soussigné, ${dr}, certifie avoir examiné ce jour ${civ} ${p.prenom} ${p.nom.toUpperCase()}, ${né} le ${fmtDate(p.naissance)}, et n'avoir constaté à l'examen clinique aucune contre-indication à la pratique de [activité].\n\nCertificat remis en main propre à l'intéressé(e) pour servir et valoir ce que de droit.`,
-      lettre: `Cher confrère,\n\nJe vous adresse ${civ} ${p.prenom} ${p.nom.toUpperCase()}, ${age(p.naissance)} ans, pour [motif].\n\n[Résumé clinique]\n\nJe vous remercie de bien vouloir le/la prendre en charge et vous prie d'agréer, cher confrère, l'expression de mes sentiments confraternels.`,
-      libre: '',
-    };
-    const titles = { repos: 'CERTIFICAT MÉDICAL DE REPOS', aptitude: 'CERTIFICAT MÉDICAL D\'APTITUDE', lettre: 'LETTRE D\'ORIENTATION', libre: 'CERTIFICAT MÉDICAL' };
-    UI.dialog('Certificat ou lettre', `
-      <div class="seg" style="margin-bottom:1rem">${[['repos', 'Repos'], ['aptitude', 'Aptitude'], ['lettre', 'Lettre à un confrère'], ['libre', 'Texte libre']].map(([k, l], i) => `<label><input type="radio" name="ct" value="${k}" ${i ? '' : 'checked'}/> ${l}</label>`).join('')}</div>
-      <div class="field"><label for="ct-text">Texte <small>(modifiez les parties entre crochets)</small></label><textarea id="ct-text" style="min-height:14rem">${esc(tpl.repos)}</textarea></div>`, [
-      { label: 'Annuler' },
-      { label: '<i class="fa-solid fa-print"></i> Imprimer', cls: 'btn-primary', onClick: () => {
-        const k = $('input[name=ct]:checked').value;
-        this.print(`${this.head()}<div class="doc-title">${titles[k]}</div><div class="doc-text">${esc($('#ct-text').value)}</div>
-          <div class="doc-sign">Fait à ${esc(s.ville.replace(/^\d+\s*/, ''))}, le ${fmtDate(todayISO())}<br><br>Signature et cachet</div>`);
-      } },
-    ]);
-    $$('input[name=ct]').forEach(r => r.onchange = () => { $('#ct-text').value = tpl[r.value]; });
-  },
 };
 
 /* ══════════════ Démarrage ══════════════ */

@@ -239,7 +239,6 @@ a { color: var(--sea-dark); }
 /* Impression */
 #print-area { display: none; }
 @media print {
-  @page { size: A5; margin: 12mm; }
   body > *:not(#print-area) { display: none !important; }
   #print-area { display: block; font-family: var(--font); color: #000; font-size: 11pt; }
 }
@@ -284,3 +283,93 @@ a { color: var(--sea-dark); }
   .sticky-actions { bottom: 4.2rem; }
   .toast { bottom: 5.5rem; }
 }
+
+/* ══════════════ Documents : page imprimée (aperçu et impression) ══════════════ */
+.sheet {
+  --doc-blue: #1f3480;
+  width: 148mm; height: 210mm; padding: 9mm 10mm 7mm; box-sizing: border-box; background: #fff; color: var(--doc-blue);
+  display: flex; flex-direction: column; font-family: 'Tinos', 'Times New Roman', Times, serif; transform-origin: top left;
+  overflow: hidden; line-height: 1.35; text-align: left;
+}
+.sheet-a4 { width: 210mm; height: 297mm; padding: 12mm 16mm 9mm; }
+.lh { display: grid; grid-template-columns: 1fr auto 1fr; gap: 4mm; align-items: start; }
+.lh-fr, .lh-ar { text-align: center; }
+.lh-ar { font-family: 'Amiri', 'Traditional Arabic', 'Times New Roman', serif; }
+.lh-name { font-weight: 700; font-size: 14pt; letter-spacing: .02em; }
+.lh-spec { font-weight: 700; font-size: 10.5pt; margin-top: 1mm; }
+.lh-dip { font-weight: 700; font-size: 6.6pt; margin-top: .6mm; }
+.lh-ar .lh-dip { font-size: 7.5pt; }
+.sheet-a4 .lh-name { font-size: 17pt; } .sheet-a4 .lh-spec { font-size: 12.5pt; } .sheet-a4 .lh-dip { font-size: 8pt; } .sheet-a4 .lh-ar .lh-dip { font-size: 9pt; }
+.lh-mid { padding-top: 9mm; }
+.lh-cnam { font-family: Arial, 'Segoe UI', sans-serif; font-size: 13pt; text-align: center; line-height: 1.25; white-space: nowrap; }
+.lh-space { height: 28mm; }
+.sheet-a4 .lh-space { height: 34mm; }
+.sheet-body { flex: 1; min-height: 0; overflow: hidden; padding-top: 4mm; }
+.lf { margin-top: auto; border-top: 2px solid var(--doc-blue); padding-top: 2mm; text-align: center; color: #26314f; }
+.lf-place { font-weight: 700; font-size: 11pt; display: flex; justify-content: center; gap: 6mm; }
+.lf-place [lang=ar] { font-family: 'Amiri', serif; font-size: 12.5pt; }
+.lf-tel { font-size: 10pt; font-weight: 700; margin-top: .5mm; }
+.lf-mail { font-size: 9.5pt; margin-top: .3mm; }
+.no-head .lf { display: none; }
+.fill { color: #111; font-weight: 700; padding: 0 1mm; border-bottom: 1px dotted #8a93b8; }
+.dots { color: #8a93b8; letter-spacing: .5px; }
+
+/* Ordonnance */
+.rx-date { text-align: center; font-weight: 700; font-size: 12pt; margin-top: 2mm; }
+.rx-patient { margin: 5mm 0 4mm; font-size: 11.5pt; color: #111; }
+.rx-title { display: none; }
+.rx-text { color: #111; font-size: 12pt; }
+.rx-main { font-weight: 700; margin-top: 2.2mm; }
+.rx-sub { padding-left: 7mm; font-size: 11.5pt; }
+.rx-gap { height: 3mm; }
+
+/* Certificat de repos (son modèle) */
+.cert-title { text-align: center; font-style: italic; font-weight: 700; font-size: 19pt; margin: 6mm 0 7mm; }
+.cert-text p { font-weight: 700; font-size: 11.5pt; margin-bottom: 4.2mm; }
+.hand { font-family: 'Dancing Script', 'Segoe Script', cursive; font-size: 13pt; font-weight: 600; }
+.cert-sign { text-align: right; margin-top: 8mm; font-size: 11pt; }
+.letter-obj { margin: 5mm 0 3mm; color: #111; }
+.letter-text { color: #111; font-size: 11.5pt; line-height: 1.6; margin-top: 4mm; }
+
+/* Certificats arabes */
+.sheet[lang=ar] .sheet-body { font-family: 'Amiri', 'Traditional Arabic', 'Times New Roman', serif; color: #1a1a1a; text-align: right; }
+.ar-title { text-align: center; font-weight: 700; font-size: 18pt; padding-bottom: 3mm; border-bottom: 1px solid #d8d8d8; margin-bottom: 4mm; }
+.ar-title.big { font-size: 26pt; margin: 4mm 0 8mm; }
+.ar-text p { font-weight: 700; font-size: 14pt; line-height: 1.55; margin-bottom: 2.6mm; }
+.ar-text.big p, .ar-dash { font-size: 19pt; line-height: 2; }
+.ar-dash { font-weight: 700; padding: 2mm 0; }
+.ar-list { display: grid; gap: 1.8mm; margin: 0 4mm 3mm 0; font-weight: 700; font-size: 13pt; line-height: 1.45; }
+.ar-list > div { display: flex; gap: 2.5mm; align-items: flex-start; }
+.ar-list .indent { margin-right: 9mm; }
+.box { flex-shrink: 0; width: 4mm; height: 4mm; border: 1.6px solid #1a1a1a; border-radius: .8mm; margin-top: 1.6mm; display: inline-grid; place-items: center; font-size: 9pt; line-height: 1; font-family: Arial, sans-serif; }
+.box.big { width: 5mm; height: 5mm; }
+.ar-sign { display: flex; justify-content: space-between; gap: 6mm; border-top: 1px solid #d8d8d8; margin-top: 5mm; padding-top: 3mm; font-weight: 700; font-size: 13pt; }
+.ar-sign.big { font-size: 17pt; margin-top: 10mm; }
+.ar-note { font-family: Arial, sans-serif; font-size: 7pt; margin-top: 4mm; line-height: 1.4; }
+
+/* Écran du document */
+.doc-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+.doc-preview-wrap { position: sticky; top: 5.5rem; }
+.doc-preview-label { margin-bottom: .4rem; font-size: .95rem; }
+.doc-preview { width: 100%; overflow: hidden; border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.18); background: #fff; }
+.doc-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+.doc-tile { display: flex; flex-direction: column; gap: .25rem; padding: .9rem 1rem; border: 2px solid var(--border); border-radius: 14px; text-decoration: none; color: var(--ink); }
+.doc-tile:hover { border-color: var(--sea); background: var(--sea-light); }
+.doc-tile i { font-size: 1.4rem; color: var(--sea); }
+.doc-tile b { font-size: 1.08rem; }
+.doc-tile span { color: var(--muted); font-size: .9rem; }
+.checks-col { display: grid; gap: .3rem; text-align: right; }
+.checks-col .check { font-weight: 400; align-items: flex-start; }
+.checks-col span[lang=ar] { font-family: 'Amiri', serif; font-size: 1.1rem; line-height: 1.5; }
+.seg-col { flex-direction: column; align-items: stretch; }
+.form-tight { grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .6rem; }
+.rx-tools { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.rx-search { flex: 1; min-width: 14rem; position: relative; }
+.rx-search i { position: absolute; left: .9rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.rx-search input { width: 100%; padding: .7rem .9rem .7rem 2.5rem; border: 2px solid var(--border); border-radius: 10px; font-size: 1.05rem; }
+.rx-textarea { width: 100%; min-height: 15rem; padding: .9rem 1rem; border: 2px solid var(--border); border-radius: 12px; font-size: 1.15rem; line-height: 1.6; font-family: var(--font); resize: vertical; }
+.rx-textarea:focus, .rx-search input:focus { border-color: var(--sea); outline: none; box-shadow: 0 0 0 3px var(--sea-light); }
+.visit-meds { white-space: normal; }
+@media (max-width: 900px) { .doc-layout { grid-template-columns: minmax(0, 1fr); } .doc-preview-wrap { position: static; } .doc-choice { grid-template-columns: minmax(0, 1fr); } }
+@media print { #print-area .sheet { transform: none !important; box-shadow: none; } #print-area { padding: 0; } }
+.lh-fr .lh-name { white-space: nowrap; } .sheet-a5 .lh-name { font-size: 13pt; }

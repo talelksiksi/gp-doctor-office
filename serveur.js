@@ -14,7 +14,7 @@ const DATA_DIR = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'donnees.json');
 const BACKUP_DIR = path.join(DATA_DIR, 'sauvegardes');
 const KEEP_BACKUPS = 90;
-const COLLECTIONS = ['patients', 'antecedents', 'visites', 'mesures', 'ordonnances', 'rdv', 'medicaments', 'modeles', 'motifs', 'settings'];
+const COLLECTIONS = ['patients', 'antecedents', 'visites', 'mesures', 'ordonnances', 'rdv', 'medicaments', 'modeles', 'motifs', 'documents', 'settings'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -28,7 +28,7 @@ function emptyDb() {
 let db;
 function load() {
   if (!fs.existsSync(DB_FILE)) { db = emptyDb(); write(); return; }
-  db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8').replace(/^﻿/, ''));
 }
 function stamp(d = new Date()) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 function write() {
@@ -62,6 +62,21 @@ function readBody(req) {
 
 load();
 backup(false);
+
+// Mise à jour : réglages fournis avec la nouvelle version (en-tête des documents…),
+// ajoutés seulement s'ils n'existent pas encore, puis le fichier est mis de côté.
+const INIT_SETTINGS = path.join(DATA_DIR, 'reglages-initiaux.json');
+if (fs.existsSync(INIT_SETTINGS)) {
+  try {
+    const add = JSON.parse(fs.readFileSync(INIT_SETTINGS, 'utf8').replace(/^﻿/, ''));
+    db.settings = db.settings || {};
+    let n = 0;
+    for (const [k, v] of Object.entries(add)) if (db.settings[k] === undefined || db.settings[k] === '') { db.settings[k] = v; n++; }
+    write();
+    fs.renameSync(INIT_SETTINGS, INIT_SETTINGS + '.applique');
+    console.log(`    Réglages ajoutés : ${n}`);
+  } catch (e) { console.error('Réglages initiaux illisibles :', e.message); }
+}
 
 const server = http.createServer(async (req, res) => {
   // Refuse toute requête qui ne vient pas de cet ordinateur
