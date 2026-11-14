@@ -373,3 +373,18 @@ a { color: var(--sea-dark); }
 @media (max-width: 900px) { .doc-layout { grid-template-columns: minmax(0, 1fr); } .doc-preview-wrap { position: static; } .doc-choice { grid-template-columns: minmax(0, 1fr); } }
 @media print { #print-area .sheet { transform: none !important; box-shadow: none; } #print-area { padding: 0; } }
 .lh-fr .lh-name { white-space: nowrap; } .sheet-a5 .lh-name { font-size: 13pt; }
+
+/* Versions françaises des certificats (A4) */
+.fr-title { text-align: center; font-style: italic; font-weight: 700; font-size: 18pt; padding-bottom: 3mm; border-bottom: 1px solid #d8d8d8; margin: 1mm 0 5mm; }
+.fr-title.big { font-size: 26pt; margin: 4mm 0 8mm; border: 0; }
+.fr-text p { font-weight: 700; font-size: 12.5pt; line-height: 1.55; margin-bottom: 2.6mm; }
+.fr-text.big p, .fr-dash { font-size: 16pt; line-height: 2; }
+.fr-dash { font-weight: 700; padding: 2mm 0 2mm 4mm; }
+.fr-list { display: grid; gap: 1.8mm; margin: 0 0 3mm 4mm; font-weight: 700; font-size: 11.5pt; line-height: 1.45; }
+.fr-list > div { display: flex; gap: 2.5mm; align-items: flex-start; }
+.fr-list .indent { margin-left: 9mm; }
+.fr-list .box { border-color: var(--doc-blue); }
+.fr-sign { display: flex; justify-content: space-between; gap: 6mm; border-top: 1px solid #d8d8d8; margin-top: 5mm; padding-top: 3mm; font-weight: 700; font-size: 12pt; }
+.fr-sign.big { font-size: 15pt; margin-top: 10mm; }
+.fr-note { text-align: left; }
+.fr-text.compact p { font-size: 11.5pt; line-height: 1.45; margin-bottom: 2mm; } .fr-text.compact .fr-list { font-size: 10.5pt; gap: 1.3mm; line-height: 1.35; }

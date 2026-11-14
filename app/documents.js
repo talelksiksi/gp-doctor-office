@@ -119,16 +119,16 @@ const Docs = {
   TYPES: {
     ordonnance: { titre: 'Ordonnance', sous: 'Médicaments, français', icon: 'fa-prescription', size: 'A5', lang: 'fr' },
     repos: { titre: 'Certificat de repos', sous: 'Repos ou prolongation, français', icon: 'fa-bed', size: 'A5', lang: 'fr' },
-    prenuptial: { titre: 'Certificat prénuptial', sous: 'شهادة طبّية سابقة للزواج', icon: 'fa-ring', size: 'A4', lang: 'ar' },
-    aptitude: { titre: 'Certificat d\'aptitude', sous: 'شهادة طبية — العمل', icon: 'fa-briefcase', size: 'A4', lang: 'ar' },
-    conduite: { titre: 'Permis de conduire', sous: 'شهادة طبّية لرخصة السياقة', icon: 'fa-car', size: 'A4', lang: 'ar' },
+    prenuptial: { titre: 'Certificat prénuptial', sous: 'Arabe ou français', icon: 'fa-ring', size: 'A4', lang: 'ar' },
+    aptitude: { titre: 'Certificat d\'aptitude', sous: 'Travail · arabe ou français', icon: 'fa-briefcase', size: 'A4', lang: 'ar' },
+    conduite: { titre: 'Permis de conduire', sous: 'Obtention ou renouvellement · arabe ou français', icon: 'fa-car', size: 'A4', lang: 'ar' },
     lettre: { titre: 'Lettre à un confrère', sous: 'Orientation, français', icon: 'fa-envelope-open-text', size: 'A5', lang: 'fr' },
     libre: { titre: 'Texte libre', sous: 'Attestation, certificat…', icon: 'fa-file-pen', size: 'A5', lang: 'fr' },
   },
 
   chooser(p) {
     UI.dialog('Quel document ?', `<div class="doc-choice">${Object.entries(this.TYPES).map(([k, t]) => `
-      <a class="doc-tile" href="#/document/${k}/${p.id}"><i class="fa-solid ${t.icon}"></i><b>${t.titre}</b><span ${t.lang === 'ar' && !/,/.test(t.sous) ? 'dir="rtl" lang="ar"' : ''}>${esc(t.sous)}</span></a>`).join('')}</div>`, [{ label: 'Fermer' }]);
+      <a class="doc-tile" href="#/document/${k}/${p.id}"><i class="fa-solid ${t.icon}"></i><b>${t.titre}</b><span>${esc(t.sous)}</span></a>`).join('')}</div>`, [{ label: 'Fermer' }]);
   },
 };
 
@@ -176,7 +176,7 @@ const DocForms = {
   },
 
   prenuptial: {
-    init: (p) => ({ nom: fullName(p), naissance: p.naissance || '', lieu: p.lieuNaissance || '', adresse: p.adresse || '', cin: p.cin || '', cinLieu: '', cinDate: '',
+    init: (p) => ({ langue: 'ar', nom: fullName(p), naissance: p.naissance || '', lieu: p.lieuNaissance || '', adresse: p.adresse || '', cin: p.cin || '', cinLieu: '', cinDate: '',
       exams: [true, true, true, false], autres: '', decl: [true, p.sexe === 'F', true, true, true], date: todayISO() }),
     EXAMS: ['فصيلة الدم', 'التهاب الكبد الفيروسي صنف "ب" وصنف "ج"', 'صورة بالأشعّة السينيّة للصدر', 'فحوص أخرى'],
     DECL: [
@@ -187,7 +187,7 @@ const DocForms = {
       'قدّمت نصائح تتعلّق بالعوامل الوراثيّة بما في ذلك تلك المرتبطة بالقرابة بين الزوجين المفترضين ونصائح تتعلّق بطرق تنظيم الولادات، وأكّدت على ضرورة مراقبة الحمل.',
     ],
     fields(p, v) {
-      return `${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}
+      return `${langChoice(v)}${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}
         ${UI.field('d-naiss', 'Date de naissance', v.naissance, { type: 'date' })}
         ${UI.field('d-lieu', 'Lieu de naissance', v.lieu)}
         ${UI.field('d-adresse', 'Adresse', v.adresse, { full: true })}
@@ -200,11 +200,12 @@ const DocForms = {
         ${UI.field('d-date', 'Date', v.date, { type: 'date' })}`;
     },
     read() {
-      return { nom: $('#d-nom').value.trim(), naissance: $('#d-naiss').value, lieu: $('#d-lieu').value.trim(), adresse: $('#d-adresse').value.trim(),
+      return { langue: readLang(), nom: $('#d-nom').value.trim(), naissance: $('#d-naiss').value, lieu: $('#d-lieu').value.trim(), adresse: $('#d-adresse').value.trim(),
         cin: $('#d-cin').value.trim(), cinLieu: $('#d-cinlieu').value.trim(), cinDate: $('#d-cindate').value,
         exams: $$('.d-exam').map(c => c.checked), autres: $('#d-autres').value.trim(), decl: $$('.d-decl').map(c => c.checked), date: $('#d-date').value || todayISO() };
     },
     body(p, v) {
+      if (v.langue === 'fr') return FR.prenuptial(p, v, this);
       const s = Store.s;
       const box = on => `<span class="box ${on ? 'on' : ''}">${on ? '✓' : ''}</span>`;
       return `<div class="ar-title">شهادة طبّية سابقة للزواج</div>
@@ -226,10 +227,11 @@ const DocForms = {
   },
 
   aptitude: {
-    init: (p) => ({ nom: fullName(p), date: todayISO() }),
-    fields: (p, v) => `${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}${UI.field('d-date', 'Date', v.date, { type: 'date' })}`,
-    read: () => ({ nom: $('#d-nom').value.trim(), date: $('#d-date').value || todayISO() }),
+    init: (p) => ({ langue: 'ar', nom: fullName(p), date: todayISO() }),
+    fields: (p, v) => `${langChoice(v)}${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}${UI.field('d-date', 'Date', v.date, { type: 'date' })}`,
+    read: () => ({ langue: readLang(), nom: $('#d-nom').value.trim(), date: $('#d-date').value || todayISO() }),
     body(p, v) {
+      if (v.langue === 'fr') return FR.aptitude(p, v);
       const s = Store.s;
       return `<div class="ar-title big">شهادة طبية</div>
         <div class="ar-text big">
@@ -249,11 +251,11 @@ const DocForms = {
   },
 
   conduite: {
-    init: (p) => ({ nom: fullName(p), naissance: p.naissance || '', lieu: p.lieuNaissance || '', cin: p.cin || '', cinLieu: '', cinDate: '',
+    init: (p) => ({ langue: 'ar', nom: fullName(p), naissance: p.naissance || '', lieu: p.lieuNaissance || '', cin: p.cin || '', cinLieu: '', cinDate: '',
       decision: 'apte', g1: true, g2: false, pub: { groupe: '', sousPar: '', par: '', section: '', annexe: '' }, specExamen: '', specCommission: '', date: todayISO() }),
     fields(p, v) {
       const r = (k, label) => `<label><input type="radio" name="d-dec" value="${k}" ${v.decision === k ? 'checked' : ''}/> ${label}</label>`;
-      return `${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}
+      return `${langChoice(v)}${UI.field('d-nom', 'Nom du patient', v.nom, { full: true })}
         ${UI.field('d-naiss', 'Date de naissance', v.naissance, { type: 'date' })}
         ${UI.field('d-lieu', 'Lieu de naissance', v.lieu)}
         ${UI.field('d-cin', 'N° carte d\'identité (CIN)', v.cin, { attrs: 'inputmode="numeric" maxlength="8"' })}
@@ -278,12 +280,13 @@ const DocForms = {
       $$('.dec-public').forEach(e => e.classList.toggle('hidden', dec !== 'public'));
       $('#d-spec1').closest('.field').classList.toggle('hidden', dec !== 'examen');
       $('#d-spec2').closest('.field').classList.toggle('hidden', dec !== 'commission');
-      return { nom: $('#d-nom').value.trim(), naissance: $('#d-naiss').value, lieu: $('#d-lieu').value.trim(), cin: $('#d-cin').value.trim(), cinLieu: $('#d-cinlieu').value.trim(), cinDate: $('#d-cindate').value,
+      return { langue: readLang(), nom: $('#d-nom').value.trim(), naissance: $('#d-naiss').value, lieu: $('#d-lieu').value.trim(), cin: $('#d-cin').value.trim(), cinLieu: $('#d-cinlieu').value.trim(), cinDate: $('#d-cindate').value,
         decision: dec, g1: $('#d-g1').checked, g2: $('#d-g2').checked,
         pub: { groupe: $('#d-pg').value.trim(), sousPar: $('#d-psp').value.trim(), par: $('#d-pp').value.trim(), section: $('#d-ps').value.trim(), annexe: $('#d-pa').value.trim() },
         specExamen: $('#d-spec1').value.trim(), specCommission: $('#d-spec2').value.trim(), date: $('#d-date').value || todayISO() };
     },
     body(p, v) {
+      if (v.langue === 'fr') return FR.conduite(p, v);
       const s = Store.s, d = v.decision;
       const box = (on, big) => `<span class="box ${big ? 'big' : ''} ${on ? 'on' : ''}">${on ? '✓' : ''}</span>`;
       return `<div class="ar-title">شهادة طبّية للحصول على رخصة سياقة أو لتجديدها</div>
@@ -325,6 +328,83 @@ const DocForms = {
   },
 };
 
+function langChoice(v) {
+  return `<div class="field full"><label>Langue du document</label><div class="seg">
+    <label><input type="radio" name="d-langue" value="ar" ${v.langue !== 'fr' ? 'checked' : ''}/> <span lang="ar" style="font-family:'Amiri',serif;font-size:1.15rem">العربية</span></label>
+    <label><input type="radio" name="d-langue" value="fr" ${v.langue === 'fr' ? 'checked' : ''}/> Français</label></div></div>`;
+}
+function readLang() { return document.querySelector('input[name=d-langue]:checked')?.value || 'ar'; }
+const frBox = (on, big) => `<span class="box ${big ? 'big' : ''} ${on ? 'on' : ''}">${on ? '✓' : ''}</span>`;
+const drFr = () => `Docteur ${titleCaseName(Store.s.prenom)} ${titleCaseName(Store.s.nom)}`;
+const signFr = (date, big) => `<div class="fr-sign ${big ? 'big' : ''}"><span>${esc(drFr())}</span><span>Fait à ${esc(Store.s.lieuFr || '')}, le ${dmy(date)}</span></div>`;
+
+const FR = {
+  prenuptial(p, v) {
+    const s = Store.s;
+    const EXAMS = ['Groupe sanguin', 'Hépatites virales B et C', 'Radiographie du thorax', 'Autres examens'];
+    const DECL = [
+      "informé l'intéressé(e) des résultats des examens cliniques et complémentaires et des mesures permettant de prévenir ou de limiter leurs risques pour lui-même (elle-même), son conjoint et ses enfants ;",
+      "attiré l'attention de la future épouse sur le risque de rubéole au cours de la grossesse et l'avoir informée de l'existence d'un vaccin ;",
+      "insisté sur les facteurs de risque prédisposant à certaines maladies (diabète, hypertension artérielle, etc.) ;",
+      "conseillé à l'intéressé(e) la vaccination contre l'hépatite B ;",
+      "donné des conseils sur les facteurs héréditaires, y compris ceux liés à la consanguinité entre les futurs époux, ainsi que sur les méthodes de planification familiale, et insisté sur la nécessité du suivi de la grossesse.",
+    ];
+    return `<div class="fr-title">Certificat Médical Prénuptial</div>
+      <div class="fr-text compact">
+        <p>Je soussigné, ${esc(drFr())}, docteur en médecine générale, inscrit au Conseil de l'Ordre des Médecins sous le n° ${esc(s.ordre || '')}, domicilié à ${esc(s.adresseFooterFr || '')},</p>
+        <p>certifie avoir examiné, en vue du mariage, Mr/Mme : ${dots(v.nom, 35)}</p>
+        <p>né(e) le ${dots(dmy(v.naissance), 16)} à ${dots(v.lieu, 18)}</p>
+        <p>demeurant à ${dots(v.adresse, 40)}</p>
+        <p>titulaire de la CIN n° ${dots(v.cin, 14)} délivrée à ${dots(v.cinLieu, 14)} le ${dots(dmy(v.cinDate), 12)}</p>
+        <p>Le présent certificat a été établi après un interrogatoire minutieux, un examen clinique complet et la prise de connaissance des résultats des examens complémentaires suivants :</p>
+        <div class="fr-list">${EXAMS.map((e, i) => `<div>${frBox(v.exams[i])}<span>${e}${i === 3 && v.exams[3] && v.autres ? ` : ${esc(v.autres)}` : ''}</span></div>`).join('')}</div>
+        <p>Je déclare en outre avoir :</p>
+        <div class="fr-list">${DECL.map((e, i) => `<div>${frBox(v.decl[i])}<span>${e}</span></div>`).join('')}</div>
+        <p>En foi de quoi, le présent certificat a été remis directement à l'intéressé(e) pour servir et valoir ce que de droit.</p>
+      </div>
+      ${signFr(v.date)}
+      <p class="ar-note fr-note">Note : est puni d'un emprisonnement d'un à trois ans quiconque, se sachant atteint d'une maladie transmissible, cherche délibérément, par son comportement, à la transmettre à autrui (loi n° 92-71 du 27 juillet 1992 relative aux maladies transmissibles, articles 11 et 18).</p>`;
+  },
+
+  aptitude(p, v) {
+    return `<div class="fr-title big">Certificat Médical</div>
+      <div class="fr-text big">
+        <p>Le ${esc(drFr())} certifie,</p>
+        <p>après avoir examiné Mr/Mme/Mlle : ${dots(v.nom, 35)}</p>
+        <p>que l'intéressé(e) est indemne de :</p>
+        <div class="fr-dash">
+          <div>- toute infirmité apparente ou cachée,</div>
+          <div>- paralysie,</div>
+          <div>- affections pulmonaires et cancéreuses, ou en est définitivement guéri(e),</div>
+          <div>- jouit de toutes ses facultés mentales,</div>
+          <div>- est apte à exercer ses fonctions dans les conditions requises sur l'ensemble du territoire de la République tunisienne.</div>
+        </div>
+      </div>
+      ${signFr(v.date, true)}`;
+  },
+
+  conduite(p, v) {
+    const s = Store.s, d = v.decision, pub = k => d === 'public' ? v.pub[k] : '';
+    return `<div class="fr-title">Certificat médical pour l'obtention ou le renouvellement du permis de conduire</div>
+      <div class="fr-text">
+        <p>Je soussigné, ${esc(drFr())}, médecin inscrit au tableau national de l'Ordre des Médecins sous le n° ${esc(s.ordre || '')},</p>
+        <p>certifie avoir examiné Mr/Mme ${dots(v.nom, 30)} né(e) le ${dots(dmy(v.naissance), 14)} à ${dots(v.lieu, 16)}</p>
+        <p>titulaire de la CIN n° ${dots(v.cin, 14)} délivrée à ${dots(v.cinLieu, 14)} le ${dots(dmy(v.cinDate), 12)}</p>
+        <p>et après avoir pris connaissance des résultats des examens et analyses complémentaires (le cas échéant) ainsi que de la déclaration du (de la) candidat(e) sur son état de santé, et conformément aux dispositions de l'annexe n° 1 de l'arrêté conjoint des ministres du Transport et de la Santé publique du 16 août 2002, déclare que l'intéressé(e) est :</p>
+        <div class="fr-list">
+          <div>${frBox(d === 'apte', true)}<span>apte à la conduite des véhicules du :</span></div>
+          <div class="indent">${frBox(d === 'apte' && v.g1)}<span>Groupe 1 (catégories A1, A, B et H)</span></div>
+          <div class="indent">${frBox(d === 'apte' && v.g2)}<span>Groupe 2 (catégories C, C+E, D, D1 et D+E)</span></div>
+          <div>${frBox(d === 'public', true)}<span>apte à la conduite publique du groupe ${dots(pub('groupe'), 8)} conformément aux dispositions du sous-paragraphe ${dots(pub('sousPar'), 8)} du paragraphe ${dots(pub('par'), 6)} de la section n° ${dots(pub('section'), 6)} de l'annexe n° ${dots(pub('annexe'), 6)} de l'arrêté susvisé</span></div>
+          <div>${frBox(d === 'examen', true)}<span>tenu(e) de subir un examen complémentaire par un spécialiste en ${dots(d === 'examen' ? v.specExamen : '', 24)}</span></div>
+          <div>${frBox(d === 'commission', true)}<span>tenu(e) de se présenter devant la commission compétente, muni(e) d'un certificat médical délivré par un spécialiste en ${dots(d === 'commission' ? v.specCommission : '', 20)}</span></div>
+          <div>${frBox(d === 'inapte', true)}<span>inapte à la conduite des véhicules</span></div>
+        </div>
+      </div>
+      ${signFr(v.date)}`;
+  },
+};
+
 function civil(p) { return `${p.prenom} ${p.nom.toUpperCase()}`; }
 function titleCaseName(s) { return String(s || '').toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()); }
 function nombreEnLettres(n) {
@@ -357,7 +437,7 @@ Views.document = function (type, pid) {
   const prev = $('#doc-preview');
   const render = () => {
     const val = F.read();
-    prev.innerHTML = Docs.sheet(t.size, F.body(p, val), { cnam: !!F.cnam, lang: t.lang });
+    prev.innerHTML = Docs.sheet(t.size, F.body(p, val), { cnam: !!F.cnam, lang: val.langue || t.lang });
     const sh = prev.firstElementChild;
     const scale = Math.min(1.4, prev.clientWidth / sh.offsetWidth);
     sh.style.transform = `scale(${scale})`;
@@ -384,7 +464,7 @@ Views.document = function (type, pid) {
     }
     d.documents.push({ id: Store.nextId('documents'), patientId: p.id, type, date: val.date || todayISO(), valeurs: val });
     await Store.save('patients', 'documents', 'visites', 'ordonnances');
-    Docs.print(t.size, Docs.sheet(t.size, F.body(p, val), { cnam: !!F.cnam, lang: t.lang }));
+    Docs.print(t.size, Docs.sheet(t.size, F.body(p, val), { cnam: !!F.cnam, lang: val.langue || t.lang }));
   };
 };
 
@@ -393,5 +473,5 @@ Docs.reprint = function (docId) {
   const doc = Store.data.documents.find(x => x.id == docId); if (!doc) return;
   const t = Docs.TYPES[doc.type], F = DocForms[doc.type], p = Store.patient(doc.patientId);
   if (!t || !F || !p) return;
-  Docs.print(t.size, Docs.sheet(t.size, F.body(p, doc.valeurs), { cnam: !!F.cnam, lang: t.lang }));
+  Docs.print(t.size, Docs.sheet(t.size, F.body(p, doc.valeurs), { cnam: !!F.cnam, lang: doc.valeurs.langue || t.lang }));
 };
