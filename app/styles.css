@@ -10,8 +10,8 @@
   --danger: #b3261e; --danger-light: #fdecea;
   --warn: #8a5a12; --warn-light: #fff4dc;
   --radius: 14px;
-  --font: 'Atkinson Hyperlegible', 'Segoe UI', Arial, sans-serif;
-  --font-title: 'Archivo', 'Segoe UI', Arial, sans-serif;
+  --font: 'Atkinson Hyperlegible', 'CI Arabic', 'Segoe UI', Arial, sans-serif;
+  --font-title: 'Archivo', 'CI Arabic', 'Segoe UI', Arial, sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: calc(19px * var(--scale)); }
